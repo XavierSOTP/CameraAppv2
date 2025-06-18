@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>QuickCam</title>
+  <link rel="icon" href="data:," />
+  <link rel="manifest" href="manifest.json" />
+  <style>
+    body { font-family: sans-serif; text-align: center; margin: 0; padding: 1rem; background: #f0f0f0; }
+    video { width: 100%; max-width: 500px; border-radius: 12px; }
+    button { margin-top: 1rem; padding: 1rem 2rem; font-size: 1rem; border-radius: 8px; border: none; background: #317EFB; color: white; }
+  </style>
+</head>
+<body>
+  <h1>📸 QuickCam</h1>
+  <video id="video" autoplay playsinline></video><br>
+  <button id="snap">Take Photo</button>
+  <canvas id="canvas" style="display:none;"></canvas>
+  <a id="download" style="display:none;">Download</a>
+
+  <script>
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const snapBtn = document.getElementById('snap');
+    const download = document.getElementById('download');
+
+    navigator.mediaDevices.getUserMedia({ video: true })
+      .then(stream => video.srcObject = stream)
+      .catch(err => alert("Camera access denied or not available."));
+
+    snapBtn.onclick = () => {
+      const ctx = canvas.getContext('2d');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0);
+      canvas.toBlob(blob => {
+        const url = URL.createObjectURL(blob);
+        download.href = url;
+        download.download = `photo_${Date.now()}.png`;
+        download.click();
+      }, 'image/png');
+    };
+
+    // Register optional service worker for PWA installability
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('service-worker.js').catch(console.error);
+    }
+  </script>
+</body>
+</html>

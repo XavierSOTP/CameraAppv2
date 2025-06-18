@@ -1,15 +1,23 @@
 {
-  "name": "QuickCam",
-  "short_name": "QuickCam",
+  "name": "CamBodaA&B",
+  "short_name": "CamBodaA&B",
   "start_url": "index.html",
+  "scope": "./",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#ffffff",
   "theme_color": "#317EFB",
+    "description": "Usa esta app para tomar fotos, nos llegarán a nosotros mañana y te quedarán de recuerdo.",
   "icons": [
-    {
-      "src": "icon.png",
-      "sizes": "192x192",
-      "type": "image/png"
-    }
-  ]
+  {
+    "src": "icon.png",
+    "sizes": "256x256",
+    "type": "image/png"
+  },
+  {
+    "src": "icon.png",
+    "sizes": "192x192",
+    "type": "image/png"
+  }
+]
 }

@@ -14,10 +14,10 @@
   </style>
 </head>
 <body>
-<h1>📸 Cámara Boda Arana & Briones</h1>
-<p style="font-size: 1.1rem; max-width: 600px; margin: 0 auto 1rem;">
-  Usa esta app para tomar fotos, nos llegarán a nosotros mañana y te quedarán de recuerdo.
-</p>
+  <h1>📸 Cámara Boda Arana & Briones</h1>
+  <p style="font-size: 1.1rem; max-width: 600px; margin: 0 auto 1rem;">
+    Usa esta app para tomar fotos, nos llegarán a nosotros mañana y te quedarán de recuerdo.
+  </p>
   <video id="video" autoplay playsinline></video><br>
   <button id="switch">🔄 Cambiar Cámara</button>
   <button id="snap">📷 Tomar Foto</button>
@@ -33,15 +33,14 @@
     const snapBtn = document.getElementById('snap');
     const switchBtn = document.getElementById('switch');
     const download = document.getElementById('download');
+    const installBtn = document.getElementById('installBtn');
+    let deferredPrompt;
 
     async function startCamera(facingMode = 'environment') {
       if (stream) {
         stream.getTracks().forEach(track => track.stop());
       }
-      stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode },
-        audio: false
-      });
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode }, audio: false });
       video.srcObject = stream;
     }
 
@@ -50,11 +49,6 @@
       startCamera(currentFacingMode);
     };
 
-    startCamera();
-
-    // PWA install handling
-    let deferredPrompt;
-    const installBtn = document.getElementById('installBtn');
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
       deferredPrompt = e;
@@ -64,10 +58,13 @@
     installBtn.onclick = async () => {
       if (deferredPrompt) {
         deferredPrompt.prompt();
-        const choice = await deferredPrompt.userChoice;
-        if (choice.outcome === 'accepted') {
-          installBtn.style.display = 'none';
+        const result = await deferredPrompt.userChoice;
+        if (result.outcome === 'accepted') {
+          console.log("👍 App instalada");
+        } else {
+          console.log("😕 Instalación cancelada");
         }
+        installBtn.style.display = 'none';
         deferredPrompt = null;
       }
     };
@@ -75,12 +72,14 @@
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('service-worker.js').catch(console.error);
     }
+
+    startCamera();
   </script>
 
-  <!-- ✅ Firebase + Upload Logic -->
+  <!-- Firebase upload module -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
-    import { getStorage, ref, uploadBytes } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-storage.js";
+    import { getStorage, ref as firebaseRef, uploadBytes } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-storage.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyA8LX76iW0UrMK7y_5Uq5uqibGIP5M4Q2w",
@@ -94,7 +93,6 @@
     const app = initializeApp(firebaseConfig);
     const storage = getStorage(app);
 
-
     snapBtn.addEventListener('click', () => {
       const ctx = canvas.getContext('2d');
       canvas.width = video.videoWidth;
@@ -102,18 +100,25 @@
       ctx.drawImage(video, 0, 0);
 
       canvas.toBlob(async (blob) => {
+        if (!blob) return alert("❌ Error al capturar la imagen");
+
         const fileName = `photo_${Date.now()}.png`;
 
-        // ✅ Download
+        // ✅ Descargar
         const url = URL.createObjectURL(blob);
         download.href = url;
         download.download = fileName;
         download.click();
 
-        // ✅ Upload to Firebase
-        const storageRef = ref(storage, 'photos/' + fileName);
-        await uploadBytes(storageRef, blob);
-        alert('✅ Photo uploaded to Firebase!');
+        // ✅ Subir a Firebase
+        try {
+          const storageRef = firebaseRef(storage, 'photos/' + fileName);
+          await uploadBytes(storageRef, blob);
+          alert("📤 Foto subida correctamente");
+        } catch (err) {
+          alert("❌ Error al subir: " + err.message);
+          console.error(err);
+        }
       }, 'image/png');
     });
   </script>

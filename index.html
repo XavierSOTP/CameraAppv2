@@ -1,10 +1,11 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>QuickCam</title>
+  <title>Cámara Boda Arana & Briones</title>
   <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icon.png" />
   <style>
     body { font-family: sans-serif; text-align: center; margin: 0; padding: 1rem; background: #f0f0f0; }
     video { width: 100%; max-width: 500px; border-radius: 12px; }
@@ -13,11 +14,14 @@
   </style>
 </head>
 <body>
-  <h1>📸 QuickCam</h1>
+<h1>📸 Cámara Boda Arana & Briones</h1>
+<p style="font-size: 1.1rem; max-width: 600px; margin: 0 auto 1rem;">
+  Usa esta app para tomar fotos, nos llegarán a nosotros mañana y te quedarán de recuerdo.
+</p>
   <video id="video" autoplay playsinline></video><br>
-  <button id="switch">🔄 Switch Camera</button>
-  <button id="snap">📷 Take Photo</button>
-  <button id="installBtn" style="display:none;">⬇️ Download App</button>
+  <button id="switch">🔄 Cambiar Cámara</button>
+  <button id="snap">📷 Tomar Foto</button>
+  <button id="installBtn" style="display:none;">⬇️ Instalar App</button>
   <canvas id="canvas" style="display:none;"></canvas>
   <a id="download"></a>
 
@@ -41,31 +45,16 @@
       video.srcObject = stream;
     }
 
-    snapBtn.onclick = () => {
-      const ctx = canvas.getContext('2d');
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      ctx.drawImage(video, 0, 0);
-      canvas.toBlob(blob => {
-        const url = URL.createObjectURL(blob);
-        download.href = url;
-        download.download = `photo_${Date.now()}.png`;
-        download.click();
-      }, 'image/png');
-    };
-
     switchBtn.onclick = () => {
       currentFacingMode = (currentFacingMode === 'user') ? 'environment' : 'user';
       startCamera(currentFacingMode);
     };
 
-    // Start with back camera
     startCamera();
 
-    // PWA install prompt handling
+    // PWA install handling
     let deferredPrompt;
     const installBtn = document.getElementById('installBtn');
-
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
       deferredPrompt = e;
@@ -83,10 +72,50 @@
       }
     };
 
-    // Optional service worker registration
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('service-worker.js').catch(console.error);
     }
+  </script>
+
+  <!-- ✅ Firebase + Upload Logic -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
+    import { getStorage, ref, uploadBytes } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-storage.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyA8LX76iW0UrMK7y_5Uq5uqibGIP5M4Q2w",
+      authDomain: "camaraboda-6942d.firebaseapp.com",
+      projectId: "camaraboda-6942d",
+      storageBucket: "camaraboda-6942d.appspot.com",
+      messagingSenderId: "1026595916194",
+      appId: "1:1026595916194:web:abbe87c81c7cd8c0088afb"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const storage = getStorage(app);
+
+
+    snapBtn.addEventListener('click', () => {
+      const ctx = canvas.getContext('2d');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0);
+
+      canvas.toBlob(async (blob) => {
+        const fileName = `photo_${Date.now()}.png`;
+
+        // ✅ Download
+        const url = URL.createObjectURL(blob);
+        download.href = url;
+        download.download = fileName;
+        download.click();
+
+        // ✅ Upload to Firebase
+        const storageRef = ref(storage, 'photos/' + fileName);
+        await uploadBytes(storageRef, blob);
+        alert('✅ Photo uploaded to Firebase!');
+      }, 'image/png');
+    });
   </script>
 </body>
 </html>

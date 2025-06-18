@@ -37,11 +37,16 @@
     let deferredPrompt;
 
     async function startCamera(facingMode = 'environment') {
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
+      try {
+        if (stream) {
+          stream.getTracks().forEach(track => track.stop());
+        }
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode }, audio: false });
+        video.srcObject = stream;
+        video.play();
+      } catch (error) {
+        alert("❌ No se pudo acceder a la cámara: " + error.message);
       }
-      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode }, audio: false });
-      video.srcObject = stream;
     }
 
     switchBtn.onclick = () => {
@@ -114,11 +119,15 @@
         try {
           const storageRef = firebaseRef(storage, 'photos/' + fileName);
           await uploadBytes(storageRef, blob);
-          alert("📤 Foto subida correctamente");
+          console.log("📤 Foto subida correctamente");
         } catch (err) {
           alert("❌ Error al subir: " + err.message);
           console.error(err);
         }
+
+        // 🔄 Reiniciar cámara si se congela
+        video.srcObject = null;
+        await startCamera(currentFacingMode);
       }, 'image/png');
     });
   </script>

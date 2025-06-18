@@ -4,30 +4,42 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>QuickCam</title>
-  <link rel="icon" href="data:," />
   <link rel="manifest" href="manifest.json" />
   <style>
     body { font-family: sans-serif; text-align: center; margin: 0; padding: 1rem; background: #f0f0f0; }
     video { width: 100%; max-width: 500px; border-radius: 12px; }
-    button { margin-top: 1rem; padding: 1rem 2rem; font-size: 1rem; border-radius: 8px; border: none; background: #317EFB; color: white; }
+    button { margin: 0.5rem; padding: 0.8rem 1.5rem; font-size: 1rem; border-radius: 8px; border: none; background: #317EFB; color: white; }
+    #download { display: none; }
   </style>
 </head>
 <body>
   <h1>📸 QuickCam</h1>
   <video id="video" autoplay playsinline></video><br>
-  <button id="snap">Take Photo</button>
+  <button id="switch">🔄 Switch Camera</button>
+  <button id="snap">📷 Take Photo</button>
+  <button id="installBtn" style="display:none;">⬇️ Download App</button>
   <canvas id="canvas" style="display:none;"></canvas>
-  <a id="download" style="display:none;">Download</a>
+  <a id="download"></a>
 
   <script>
+    let currentFacingMode = 'environment';
+    let stream = null;
     const video = document.getElementById('video');
     const canvas = document.getElementById('canvas');
     const snapBtn = document.getElementById('snap');
+    const switchBtn = document.getElementById('switch');
     const download = document.getElementById('download');
 
-    navigator.mediaDevices.getUserMedia({ video: true })
-      .then(stream => video.srcObject = stream)
-      .catch(err => alert("Camera access denied or not available."));
+    async function startCamera(facingMode = 'environment') {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode },
+        audio: false
+      });
+      video.srcObject = stream;
+    }
 
     snapBtn.onclick = () => {
       const ctx = canvas.getContext('2d');
@@ -42,7 +54,36 @@
       }, 'image/png');
     };
 
-    // Register optional service worker for PWA installability
+    switchBtn.onclick = () => {
+      currentFacingMode = (currentFacingMode === 'user') ? 'environment' : 'user';
+      startCamera(currentFacingMode);
+    };
+
+    // Start with back camera
+    startCamera();
+
+    // PWA install prompt handling
+    let deferredPrompt;
+    const installBtn = document.getElementById('installBtn');
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      installBtn.style.display = 'inline-block';
+    });
+
+    installBtn.onclick = async () => {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        const choice = await deferredPrompt.userChoice;
+        if (choice.outcome === 'accepted') {
+          installBtn.style.display = 'none';
+        }
+        deferredPrompt = null;
+      }
+    };
+
+    // Optional service worker registration
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('service-worker.js').catch(console.error);
     }

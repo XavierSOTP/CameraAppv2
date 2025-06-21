@@ -70,18 +70,6 @@
       font-size: 1.5rem;
       box-shadow: 2px 2px 6px rgba(0,0,0,0.4);
     }
-    #installBtn {
-      margin-top: 1rem;
-      padding: 0.8rem 1.5rem;
-      font-size: 1rem;
-      border-radius: 8px;
-      border: none;
-      background: #ffffffcc;
-      color: #333;
-      font-weight: bold;
-      box-shadow: 2px 2px 6px rgba(0,0,0,0.3);
-      display: none;
-    }
     #flash {
       position: fixed;
       top: 0;
@@ -118,7 +106,6 @@
   </select>
   <button id="switch">🔄</button>
   <button id="snap">📷</button>
-  <button id="installBtn">⬇️ Instalar App</button>
   <canvas id="canvas" style="display:none;"></canvas>
   <a id="download"></a>
   <div id="flash"></div>
@@ -163,11 +150,16 @@
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       video.srcObject = stream;
       video.classList.toggle('mirrored', facingMode === 'user');
+      video.style.filter = filterSelect.value;
     }
 
     switchBtn.onclick = () => {
       currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
       startCamera(currentFacingMode);
+    };
+
+    filterSelect.onchange = () => {
+      video.style.filter = filterSelect.value;
     };
 
     snapBtn.addEventListener('click', () => {

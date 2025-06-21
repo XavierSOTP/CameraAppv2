@@ -12,7 +12,7 @@
       text-align: center;
       margin: 0;
       padding: 1rem;
-      background: url('https://raw.githubusercontent.com/XavierSOTP/BodaXavierMaria/main/123123.jpg') no-repeat center center fixed;
+      background: url('fondo-boda.jpg') no-repeat center center fixed;
       background-size: cover;
       color: #fff;
       backdrop-filter: brightness(0.8);
@@ -35,6 +35,10 @@
       border-radius: 12px;
       border: 4px solid white;
       box-shadow: 0 0 12px rgba(0, 0, 0, 0.5);
+      transform: scaleX(1);
+    }
+    .mirrored {
+      transform: scaleX(-1);
     }
     select {
       margin: 0.5rem;
@@ -108,6 +112,7 @@
         }
         stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode }, audio: false });
         video.srcObject = stream;
+        video.classList.toggle('mirrored', facingMode === 'user');
         video.play();
       } catch (error) {
         alert("❌ No se pudo acceder a la cámara: " + error.message);
@@ -167,7 +172,13 @@
       const ctx = canvas.getContext('2d');
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
-      ctx.filter = getComputedStyle(video).filter;
+
+      if (currentFacingMode === 'user') {
+        ctx.translate(canvas.width, 0);
+        ctx.scale(-1, 1);
+      }
+
+      ctx.filter = filterSelect.value;
       ctx.drawImage(video, 0, 0);
 
       canvas.toBlob(async (blob) => {
@@ -175,13 +186,11 @@
 
         const fileName = `photo_${Date.now()}.png`;
 
-        // ✅ Descargar
         const url = URL.createObjectURL(blob);
         download.href = url;
         download.download = fileName;
         download.click();
 
-        // ✅ Subir a Firebase
         try {
           const storageRef = firebaseRef(storage, 'photos/' + fileName);
           await uploadBytes(storageRef, blob);
@@ -191,7 +200,6 @@
           console.error(err);
         }
 
-        // 🔄 Reiniciar cámara si se congela
         video.srcObject = null;
         await startCamera(currentFacingMode);
       }, 'image/png');

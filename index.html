@@ -46,8 +46,32 @@
       font-size: 1rem;
       border-radius: 8px;
     }
-    button {
-      margin: 0.5rem;
+    #switch {
+      position: fixed;
+      bottom: 6rem;
+      right: 1rem;
+      z-index: 1000;
+      background: #ffffffcc;
+      color: #333;
+      padding: 1rem;
+      border-radius: 50%;
+      font-size: 1.5rem;
+      box-shadow: 2px 2px 6px rgba(0,0,0,0.4);
+    }
+    #snap {
+      position: fixed;
+      bottom: 1rem;
+      right: 1rem;
+      z-index: 1000;
+      background: #ffffffcc;
+      color: #333;
+      padding: 1rem;
+      border-radius: 50%;
+      font-size: 1.5rem;
+      box-shadow: 2px 2px 6px rgba(0,0,0,0.4);
+    }
+    #installBtn {
+      margin-top: 1rem;
       padding: 0.8rem 1.5rem;
       font-size: 1rem;
       border-radius: 8px;
@@ -56,10 +80,19 @@
       color: #333;
       font-weight: bold;
       box-shadow: 2px 2px 6px rgba(0,0,0,0.3);
-      transition: transform 0.1s;
+      display: none;
     }
-    button:hover {
-      transform: scale(1.05);
+    #flash {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: white;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease-out;
+      z-index: 999;
     }
     #download { display: none; }
   </style>
@@ -82,76 +115,15 @@
     <option value="brightness(1.2) contrast(0.8)">Suave</option>
     <option value="invert(0.8) grayscale(0.6)">Inverso artístico</option>
     <option value="blur(2px)">Sueño</option>
-  </select><br>
-  <button id="switch">🔄 Cambiar Cámara</button>
-  <button id="snap">📷 Tomar Foto</button>
-  <button id="installBtn" style="display:none;">⬇️ Instalar App</button>
+  </select>
+  <button id="switch">🔄</button>
+  <button id="snap">📷</button>
+  <button id="installBtn">⬇️ Instalar App</button>
   <canvas id="canvas" style="display:none;"></canvas>
   <a id="download"></a>
+  <div id="flash"></div>
+  <audio id="shutterSound" src="https://actions.google.com/sounds/v1/camera/camera_click.ogg" preload="auto"></audio>
 
-  <script>
-    let currentFacingMode = 'environment';
-    let stream = null;
-    const video = document.getElementById('video');
-    const canvas = document.getElementById('canvas');
-    const snapBtn = document.getElementById('snap');
-    const switchBtn = document.getElementById('switch');
-    const download = document.getElementById('download');
-    const installBtn = document.getElementById('installBtn');
-    const filterSelect = document.getElementById('filter');
-    let deferredPrompt;
-
-    filterSelect.onchange = () => {
-      video.style.filter = filterSelect.value;
-    };
-
-    async function startCamera(facingMode = 'environment') {
-      try {
-        if (stream) {
-          stream.getTracks().forEach(track => track.stop());
-        }
-        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode }, audio: false });
-        video.srcObject = stream;
-        video.classList.toggle('mirrored', facingMode === 'user');
-        video.play();
-      } catch (error) {
-        alert("❌ No se pudo acceder a la cámara: " + error.message);
-      }
-    }
-
-    switchBtn.onclick = () => {
-      currentFacingMode = (currentFacingMode === 'user') ? 'environment' : 'user';
-      startCamera(currentFacingMode);
-    };
-
-    window.addEventListener('beforeinstallprompt', (e) => {
-      e.preventDefault();
-      deferredPrompt = e;
-      installBtn.style.display = 'inline-block';
-    });
-
-    installBtn.onclick = async () => {
-      if (deferredPrompt) {
-        deferredPrompt.prompt();
-        const result = await deferredPrompt.userChoice;
-        if (result.outcome === 'accepted') {
-          console.log("👍 App instalada");
-        } else {
-          console.log("😕 Instalación cancelada");
-        }
-        installBtn.style.display = 'none';
-        deferredPrompt = null;
-      }
-    };
-
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('service-worker.js').catch(console.error);
-    }
-
-    startCamera();
-  </script>
-
-  <!-- Firebase upload module -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
     import { getStorage, ref as firebaseRef, uploadBytes } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-storage.js";
@@ -168,12 +140,47 @@
     const app = initializeApp(firebaseConfig);
     const storage = getStorage(app);
 
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const snapBtn = document.getElementById('snap');
+    const switchBtn = document.getElementById('switch');
+    const download = document.getElementById('download');
+    const filterSelect = document.getElementById('filter');
+    const shutterSound = document.getElementById('shutterSound');
+    const flash = document.getElementById('flash');
+
+    let currentFacingMode = 'environment';
+
+    async function startCamera(facingMode = 'environment') {
+      const constraints = {
+        video: {
+          facingMode,
+          width: { ideal: 1920 },
+          height: { ideal: 1080 }
+        },
+        audio: false
+      };
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      video.srcObject = stream;
+      video.classList.toggle('mirrored', facingMode === 'user');
+    }
+
+    switchBtn.onclick = () => {
+      currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+      startCamera(currentFacingMode);
+    };
+
     snapBtn.addEventListener('click', () => {
+      shutterSound.currentTime = 0;
+      shutterSound.play();
+      flash.style.opacity = 1;
+      setTimeout(() => flash.style.opacity = 0, 150);
+
       const ctx = canvas.getContext('2d');
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
 
-      if (currentFacingMode === 'user') {
+      if (video.classList.contains('mirrored')) {
         ctx.translate(canvas.width, 0);
         ctx.scale(-1, 1);
       }
@@ -185,7 +192,6 @@
         if (!blob) return alert("❌ Error al capturar la imagen");
 
         const fileName = `photo_${Date.now()}.png`;
-
         const url = URL.createObjectURL(blob);
         download.href = url;
         download.download = fileName;
@@ -201,9 +207,11 @@
         }
 
         video.srcObject = null;
-        await startCamera(currentFacingMode);
+        startCamera(currentFacingMode);
       }, 'image/png');
     });
+
+    startCamera(currentFacingMode);
   </script>
 </body>
 </html>
